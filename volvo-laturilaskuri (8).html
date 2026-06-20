@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Latauslaskuri">
+<title>Auton latauslaskuri</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f5f5f5;--txt:#111;--txt2:#555;--txt3:#999;
+  --border:rgba(0,0,0,0.13);--border2:rgba(0,0,0,0.3);
+  --acc:#00b894;--acc-bg:rgba(0,184,148,.1);
+  --warn-bg:#fff8e1;--warn-txt:#7a5c00;
+  --info-bg:#e8f4fd;--info-txt:#0a5070;
+  --r:12px;--r2:16px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1e;--bg2:#2c2c2e;--txt:#f2f2f7;--txt2:#aeaeb2;--txt3:#636366;
+  --border:rgba(255,255,255,0.13);--border2:rgba(255,255,255,0.3);
+  --acc-bg:rgba(0,184,148,.13);
+  --warn-bg:#2d2200;--warn-txt:#ffd055;
+  --info-bg:#001d38;--info-txt:#6dc0f5;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--txt);overflow-x:hidden;
+  padding:max(env(safe-area-inset-top),18px) 18px max(env(safe-area-inset-bottom),28px);min-height:100dvh;font-size:17px;-webkit-font-smoothing:antialiased}
+h1{font-size:25px;font-weight:800;margin:8px 0 3px;display:flex;align-items:center;gap:8px;letter-spacing:-.3px}
+.sub{font-size:15px;color:var(--txt2);margin-bottom:16px;font-weight:500}
+.chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:20px}
+.chip{font-size:13px;font-weight:600;background:var(--bg2);border:0.5px solid var(--border2);border-radius:20px;padding:5px 12px;color:var(--txt2)}
+.sec{font-size:13px;font-weight:700;letter-spacing:.06em;color:var(--txt2);text-transform:uppercase;margin:22px 0 10px}
+.sec-row{display:flex;align-items:center;justify-content:space-between;margin:22px 0 10px}
+.sec-row .sec{margin:0}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ctrl{background:var(--bg2);border-radius:var(--r);padding:12px 14px}
+.ctrl label{font-size:14px;color:var(--txt2);display:block;margin-bottom:8px;font-weight:500}
+.ctrl .row{display:flex;align-items:center;gap:10px}
+
+.ctrl-stack{display:flex;flex-direction:column;gap:12px}
+.ctrl-big{background:var(--bg2);border-radius:var(--r2);padding:18px 18px 20px}
+.ctrl-big label{font-size:16px;color:var(--txt);display:block;margin-bottom:12px;font-weight:700}
+.ctrl-big .row{display:flex;align-items:center;gap:12px}
+.ctrl-big .sv{font-size:22px}
+
+input[type=range]{flex:1;accent-color:var(--acc);cursor:pointer;height:30px}
+.sv{font-size:17px;font-weight:700;min-width:54px;text-align:right;font-family:'SF Mono',ui-monospace,monospace;color:var(--txt)}
+
+/* Kaksoiskahva-liukusäädin aikaikkunalle */
+#time-window-label{font-size:17px;font-weight:700;color:var(--txt);margin-bottom:16px;text-align:left;line-height:1.35}
+.dual-slider-wrap{position:relative;height:34px;margin:6px 2px 4px}
+.dual-track{position:absolute;top:50%;left:0;right:0;height:6px;border-radius:4px;background:var(--border2);transform:translateY(-50%)}
+.dual-track-fill{position:absolute;top:50%;height:6px;border-radius:4px;background:var(--acc);transform:translateY(-50%)}
+.dual-range{
+  position:absolute;top:0;left:0;width:100%;height:34px;margin:0;
+  background:none;pointer-events:none;appearance:none;-webkit-appearance:none;
+}
+.dual-range::-webkit-slider-runnable-track{background:transparent;height:34px}
+.dual-range::-webkit-slider-thumb{
+  pointer-events:auto;appearance:none;-webkit-appearance:none;
+  width:30px;height:30px;border-radius:50%;background:var(--acc);
+  border:3px solid var(--bg);box-shadow:0 0 0 1px var(--border2);cursor:pointer;
+}
+.dual-range::-moz-range-track{background:transparent;height:34px;border:none}
+.dual-range::-moz-range-thumb{
+  pointer-events:auto;width:24px;height:24px;border-radius:50%;background:var(--acc);
+  border:3px solid var(--bg);box-shadow:0 0 0 1px var(--border2);cursor:pointer;
+}
+.dual-sub-label{font-size:15px;color:var(--txt2);margin-top:10px;text-align:center}
+.dual-sub-label strong{color:var(--txt);font-weight:700;font-family:'SF Mono',ui-monospace,monospace}
+
+.bwrap{display:flex;align-items:flex-end;gap:1px;height:72px;background:var(--bg2);border-radius:var(--r) var(--r) 0 0;padding:8px 4px 0;width:100%;overflow:hidden;box-sizing:border-box}
+.bar{flex:1 1 0;border-radius:2px 2px 0 0;min-width:0;max-width:8px}
+.bar.sel{background:var(--acc)!important;opacity:1!important}
+.bar.daymark{box-shadow:-1px 0 0 0 var(--txt3)}
+.bar.past{opacity:.2}
+.bar.gap{
+  background:repeating-linear-gradient(45deg,var(--bg2) 0 3px,var(--border2) 3px 6px);
+  opacity:.55;
+}
+.daterange{font-size:13px;color:var(--txt2);text-align:center;padding:8px 0;background:var(--bg2);border-radius:0 0 var(--r) var(--r);font-weight:500}
+.hlbl{display:none}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid var(--border2);border-top-color:var(--acc);border-radius:50%;animation:sp .8s linear infinite;vertical-align:middle;margin-right:5px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.sval{font-size:13px;color:var(--txt2);font-weight:500}
+.res{background:var(--acc-bg);border:1px solid var(--acc);border-radius:var(--r2);padding:20px;margin-top:16px}
+.res-hdr{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.res-hdr span:nth-child(2){font-size:16px!important}
+.times{display:flex;align-items:baseline;gap:8px;margin-bottom:18px}
+.timecol{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+.dlbl{font-size:13px;font-weight:600;color:var(--txt2);font-family:'SF Mono',ui-monospace,monospace}
+.datehdr{font-size:14px;font-weight:600;color:var(--txt2);margin-bottom:8px}
+.big{font-size:40px;font-weight:700;font-family:'SF Mono',ui-monospace,monospace;letter-spacing:-1.5px}
+.arr{font-size:26px;color:var(--txt3);margin:0 2px}
+.dur{font-size:14px;color:var(--txt2);align-self:flex-end;padding-bottom:5px;font-weight:500}
+.ir{display:flex;justify-content:space-between;padding:9px 0;font-size:15px;border-bottom:0.5px solid rgba(0,184,148,.25)}
+.ir:last-child{border-bottom:none}
+.ir .k{color:var(--txt2)}
+.ir .v{font-family:'SF Mono',ui-monospace,monospace;font-weight:700;font-size:16px}
+.badge{font-size:13px;padding:4px 11px;border-radius:20px;font-weight:700}
+.bok{background:rgba(0,184,148,.2);color:#006e55}
+.bwarn{background:var(--warn-bg);color:var(--warn-txt)}
+.binfo{background:var(--info-bg);color:var(--info-txt)}
+@media(prefers-color-scheme:dark){.bok{color:#00d4a8}}
+.err{background:var(--warn-bg);border:1px solid var(--warn-txt);border-radius:var(--r2);padding:18px;font-size:15px;line-height:1.5;color:var(--warn-txt);margin-top:16px}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--r);padding:15px;font-size:16px;font-weight:600;color:var(--txt);cursor:pointer;margin-top:20px;width:100%;-webkit-tap-highlight-color:transparent}
+.btn:active{opacity:.6}
+.notice{background:var(--info-bg);border:0.5px solid var(--info-txt);border-radius:var(--r);padding:12px 14px;font-size:14px;color:var(--info-txt);margin-bottom:16px;line-height:1.5}
+.notice strong{font-weight:700}
+.placeholder{font-size:15px;color:var(--txt2);padding:16px 0;text-align:center}
+
+details#settings-panel{margin-bottom:18px;border:0.5px solid var(--border2);border-radius:var(--r2);background:var(--bg2);overflow:hidden}
+details#settings-panel summary{list-style:none;cursor:pointer;padding:14px 16px;font-size:15px;font-weight:600;color:var(--txt);-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:space-between}
+details#settings-panel summary::-webkit-details-marker{display:none}
+details#settings-panel summary::after{content:'▾';color:var(--txt2);font-size:13px;transition:transform .2s}
+details#settings-panel[open] summary::after{transform:rotate(180deg)}
+.settings-body{padding:4px 16px 18px;display:flex;flex-direction:column;gap:12px}
+.settings-body .g2{gap:10px}
+.checkrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.checkrow label{font-size:14px;color:var(--txt);font-weight:500;margin:0!important}
+.checkrow input[type=checkbox]{width:22px;height:22px;accent-color:var(--acc)}
+.tolerance-hint{font-size:12px;color:var(--txt2);line-height:1.45;margin-top:8px}
+input[type=number],select{
+  width:100%;font-size:16px;font-family:'SF Mono',ui-monospace,monospace;color:var(--txt);
+  background:var(--bg);border:0.5px solid var(--border2);border-radius:8px;padding:9px 10px;
+}
+select{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px}
+#set-saved-msg{transition:opacity .3s}
+</style>
+</head>
+<body>
+<h1>⚡ Auton latauslaskuri</h1>
+<p class="sub">Pörssisähkö 15 min · <span id="loc-name-sub">Tampere</span></p>
+
+<div id="cors-notice" class="notice" style="display:none">
+  <strong>Avaa verkosta, ei tiedostosta.</strong> Tallenna tiedosto iCloudiin ja avaa se sieltä Safarilla – tai katso ohjeet alta.
+</div>
+
+<div class="chips">
+  <span class="chip">11 kW / 3-vaihe</span>
+  <span class="chip">Häviö 10 %</span>
+  <span class="chip" id="chip-cap">Akku 69 kWh</span>
+  <span class="chip" id="chip-fees">Siirto+toimitus 6,64 snt/kWh</span>
+</div>
+
+<details id="settings-panel">
+  <summary>⚙️ Lisäasetukset</summary>
+  <div class="settings-body">
+
+    <div class="ctrl">
+      <label>Akun kapasiteetti (kWh)</label>
+      <div class="row"><input type="number" id="set-cap" value="69" min="10" max="200" step="0.5" inputmode="decimal"></div>
+    </div>
+
+    <div class="ctrl checkrow">
+      <label for="set-tempon" style="margin:0">Ota lämpötilan vaikutus huomioon</label>
+      <input type="checkbox" id="set-tempon" checked>
+    </div>
+
+    <div class="ctrl" id="set-loc-wrap">
+      <label>Sijainti (säätiedot)</label>
+      <select id="set-loc">
+        <option value="tampere">Tampere</option>
+        <option value="helsinki">Helsinki</option>
+        <option value="turku">Turku</option>
+        <option value="oulu">Oulu</option>
+        <option value="jyvaskyla">Jyväskylä</option>
+        <option value="kuopio">Kuopio</option>
+        <option value="lahti">Lahti</option>
+        <option value="rovaniemi">Rovaniemi</option>
+        <option value="vaasa">Vaasa</option>
+        <option value="custom">Muu (anna koordinaatit)</option>
+      </select>
+    </div>
+
+    <div class="g2" id="set-loc-custom" style="display:none">
+      <div class="ctrl">
+        <label>Leveysaste (lat)</label>
+        <div class="row"><input type="number" id="set-lat" value="61.4978" step="0.0001" inputmode="decimal"></div>
+      </div>
+      <div class="ctrl">
+        <label>Pituusaste (lon)</label>
+        <div class="row"><input type="number" id="set-lon" value="23.7610" step="0.0001" inputmode="decimal"></div>
+      </div>
+    </div>
+
+    <div class="g2">
+      <div class="ctrl">
+        <label>Toimitusmaksu (snt/kWh)</label>
+        <div class="row"><input type="number" id="set-delivery" value="0.456" min="0" max="20" step="0.001" inputmode="decimal"></div>
+      </div>
+      <div class="ctrl">
+        <label>Siirtomaksu (snt/kWh)</label>
+        <div class="row"><input type="number" id="set-transfer" value="6.18" min="0" max="20" step="0.01" inputmode="decimal"></div>
+      </div>
+    </div>
+
+    <div class="ctrl">
+      <label>Hintatoleranssi halvimman jakson haussa (snt, koko lataukselle)</label>
+      <div class="row"><input type="number" id="set-tolerance" value="0.1" min="0.1" max="20" step="0.1" inputmode="decimal"></div>
+      <div class="tolerance-hint">Kuinka paljon kokonaishinta voi vaihdella, jotta eri alkamisajat lasketaan "yhtä halvoiksi" (näkyy kahtena vaihtoehtona). Pienempi arvo = tarkempi haku, mutta voi jättää löytämättä lähes yhtä edullisia ikkunoita pitkien tasahintaisten jaksojen aikana. Vähintään 0,1 snt suositellaan, jotta pienet pyöristyserot eivät vaikuta tulokseen.</div>
+    </div>
+
+    <button class="btn" id="set-save" type="button">✓ &nbsp;Tallenna asetukset</button>
+    <button class="btn" id="set-reset" type="button" style="margin-top:8px;color:var(--txt2)">↺ &nbsp;Palauta oletukset</button>
+    <div id="set-saved-msg" style="display:none;font-size:13px;color:#006e55;text-align:center;margin-top:8px;font-weight:600">Tallennettu ✓</div>
+  </div>
+</details>
+
+<div class="sec">Akun tila</div>
+
+<div class="ctrl-stack">
+  <div class="ctrl-big">
+    <label>Nykyinen SoC</label>
+    <div class="row"><input type="range" min="1" max="89" value="20" id="soc0" step="1"><span class="sv" id="sv0">20 %</span></div>
+  </div>
+  <div class="ctrl-big">
+    <label>Tavoite SoC</label>
+    <div class="row"><input type="range" min="10" max="100" value="90" id="soc1" step="10"><span class="sv" id="sv1">90 %</span></div>
+  </div>
+</div>
+
+<div class="sec">Aikaikkuna</div>
+<div class="ctrl-big">
+  <label id="time-window-label">Tänään klo 00:00 – Huomenna klo 24:00</label>
+  <div class="dual-slider-wrap">
+    <div class="dual-track"></div>
+    <div class="dual-track-fill" id="dual-fill"></div>
+    <input type="range" min="0" max="0" value="0" id="tmin" step="1" class="dual-range">
+    <input type="range" min="1" max="1" value="1" id="tmax" step="1" class="dual-range">
+  </div>
+  <div class="dual-sub-label">Hintajakso: <strong id="window-duration">– h</strong></div>
+</div>
+
+<div class="sec-row" style="margin-top:16px">
+  <div class="sec">Spot-hinnat (15 min)</div>
+  <span class="sval" id="pstat"><span class="spin"></span>Haetaan...</span>
+</div>
+<div class="bwrap" id="bars"></div>
+<div class="hlbl" id="hlbls"></div>
+<div id="daterange" class="daterange"></div>
+
+<div id="weather-section">
+  <div class="sec-row" style="margin-top:14px">
+    <div class="sec">Sää – <span id="loc-name-weather">Tampere</span></div>
+    <span class="sval" id="tstat"><span class="spin"></span>Haetaan...</span>
+  </div>
+</div>
+
+<div id="result"><div class="placeholder">Lasketaan...</div></div>
+
+<button class="btn" onclick="refresh()">↻ &nbsp;Päivitä</button>
+
+<script>
+const CHARGER=11,LOSS=0.10;
+
+// Suomen suurimpien kaupunkien koordinaatit säätietoa varten.
+const CITY_COORDS={
+  tampere:{lat:61.4978,lon:23.7610,name:'Tampere'},
+  helsinki:{lat:60.1699,lon:24.9384,name:'Helsinki'},
+  turku:{lat:60.4518,lon:22.2666,name:'Turku'},
+  oulu:{lat:65.0121,lon:25.4651,name:'Oulu'},
+  jyvaskyla:{lat:62.2426,lon:25.7473,name:'Jyväskylä'},
+  kuopio:{lat:62.8924,lon:27.6770,name:'Kuopio'},
+  lahti:{lat:60.9827,lon:25.6612,name:'Lahti'},
+  rovaniemi:{lat:66.5039,lon:25.7294,name:'Rovaniemi'},
+  vaasa:{lat:63.0951,lon:21.6165,name:'Vaasa'},
+};
+
+const DEFAULT_SETTINGS={
+  cap:69,
+  tempOn:true,
+  loc:'tampere',
+  lat:61.4978,
+  lon:23.7610,
+  delivery:0.456,
+  transfer:6.18,
+  tolerance:0.1,
+};
+const MIN_TOLERANCE=0.1; // ehdoton alaraja - estää 1e-9-tyyppisen liukulukuvirheen paluun
+const SETTINGS_KEY='xc40_laturi_settings_v1';
+
+function loadSettings(){
+  try{
+    const raw=localStorage.getItem(SETTINGS_KEY);
+    if(!raw)return{...DEFAULT_SETTINGS};
+    return{...DEFAULT_SETTINGS,...JSON.parse(raw)};
+  }catch(e){return{...DEFAULT_SETTINGS};}
+}
+function saveSettingsToStorage(s){
+  try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(s));}catch(e){/* esim. yksityinen selaus - ei kriittistä */}
+}
+
+let SETTINGS=loadSettings();
+// CAP pysyy omana muuttujanaan koska sitä käytetään hyvin usein laskennassa
+let CAP=SETTINGS.cap;
+let slots=[],tempC=null,pOk=false,tOk=false;
+let TIMELINE_START=new Date(); // ankkuripiste, asetetaan tarkasti initTimeline():ssa
+
+if(location.protocol==='file:'){
+  document.getElementById('cors-notice').style.display='block';
+}
+
+function pad(n){return String(n).padStart(2,'0')}
+function formatDuration(totalMin){
+  const h=Math.floor(totalMin/60), m=totalMin%60;
+  return h>0 ? (m>0?`${h}h ${m}min`:`${h}h`) : `${m}min`;
+}
+function slotTime(iso){const d=new Date(iso);return pad(d.getHours())+':'+pad(d.getMinutes())}
+function slotDate(iso){
+  const d=new Date(iso);
+  const wd=['Su','Ma','Ti','Ke','To','Pe','La'][d.getDay()];
+  return wd+' '+d.getDate()+'.'+(d.getMonth()+1)+'.';
+}
+function addMs(iso,ms){return new Date(new Date(iso).getTime()+ms).toISOString()}
+
+function getTF(t){
+  if(t>=15)return 1.0;
+  if(t>=5)return 1+(15-t)*0.008;
+  if(t>=-10)return 1.1+(5-t)*0.015;
+  return 1.25+(-10-t)*0.01;
+}
+
+function recalc(){
+  const ra=document.getElementById('result');
+  if(!pOk||!tOk)return;
+
+  if(!slots.length){
+    ra.innerHTML='<div class="err">Pörssisähkön hintoja ei saatu haettua. Tarkista verkkoyhteys ja paina "Päivitä".</div>';
+    renderBars(new Set());return;
+  }
+  if(SETTINGS.tempOn && tempC===null){
+    ra.innerHTML='<div class="err">Lämpötilaa ei saatu haettua. Tarkista verkkoyhteys ja paina "Päivitä".</div>';
+    renderBars(new Set());return;
+  }
+
+  const s0=+document.getElementById('soc0').value;
+  const s1=+document.getElementById('soc1').value;
+  const tminSlot=+document.getElementById('tmin').value; // 15min-slotteja TIMELINE_START:sta
+  const tmaxSlot=+document.getElementById('tmax').value;
+  const need=(s1-s0)/100*CAP;
+  const effKw=CHARGER*(1-LOSS);
+  const tf=SETTINGS.tempOn ? getTF(tempC) : 1.0;
+  const slotsNeeded=Math.ceil(need*tf/effKw*4);
+
+  if(need<=0){ra.innerHTML='<div class="res placeholder">Akku on jo tavoitetasolla.</div>';renderBars(new Set());return;}
+
+  const now=new Date();
+
+  // TIMELINE_START on aikajanan ankkuripiste (asetettu initTimeline-funktiossa,
+  // pyöristetty nykyhetki alaspäin lähimpään varttiin). tmin/tmax-säätimet ovat
+  // suoraan 15 min -slotti-indeksejä tästä ankkurista eteenpäin, joten ikkuna
+  // ei tarvitse mitään "tänään/huomenna"-päättelyä - se on aina oikein.
+  const winStart=new Date(TIMELINE_START.getTime()+tminSlot*15*60000);
+  const winEnd=new Date(TIMELINE_START.getTime()+tmaxSlot*15*60000);
+  const winH=(tmaxSlot-tminSlot)/4;
+
+  const valid=slots.filter(s=>{
+    const st=new Date(s.startDate);
+    return st>=winStart && st<winEnd;
+  });
+
+  // Pilko valid-lista yhtenäisiin lohkoihin: vain peräkkäiset 15 min
+  // vartit muodostavat yhden lohkon. Verrataan startDate-kenttiä
+  // toisiinsa (edellinen alku + 15min == seuraava alku) sen sijaan että
+  // luotettaisiin endDate-kenttään, joka API:ssa on 1ms vajaa (esim.
+  // 21:59:59.999 eikä 22:00:00.000) ja aiheuttaisi virheellisen aukon
+  // jokaisen vartin välille.
+  const blocks=[];
+  let cur=[];
+  for(const s of valid){
+    const st=new Date(s.startDate).getTime();
+    if(cur.length){
+      const prevStart=new Date(cur[cur.length-1].startDate).getTime();
+      if(st!==prevStart+15*60000){ blocks.push(cur); cur=[]; }
+    }
+    cur.push(s);
+  }
+  if(cur.length) blocks.push(cur);
+
+  const availSlotsTotal=valid.length;
+  const longestBlock=blocks.reduce((a,b)=>b.length>a.length?b:a,[]);
+
+  if(longestBlock.length<slotsNeeded){
+    const availH=(availSlotsTotal/4).toFixed(1);
+    const longestH=(longestBlock.length/4).toFixed(1);
+    ra.innerHTML=`<div class="err">Lataus vaatii ${formatDuration(slotsNeeded*15)} yhtäjaksoisesti. Valitusta ikkunasta (${winH.toFixed(1)} h) on julkaistuna yhteensä ${availH} h hintoja, mutta pisin yhtäjaksoinen tunnettu jakso on vain ${longestH} h (osa hinnoista puuttuu tai ei ole vielä julkaistu). Odota hintojen julkaisua, laajenna ikkunaa tai lyhennä tarvittavaa latausaikaa.</div>`;
+    renderBars(new Set());return;
+  }
+
+  let best=Infinity,bestBlock=null;
+  // EQUAL_TOLERANCE: kaksi ikkunaa lasketaan "yhtä halvoiksi" jos niiden
+  // kokonaishintaero on alle 0.1 snt (koko ladattavan jakson summana, ei
+  // per slot). Tämä on tarkoituksella väljempi kuin liukulukutarkkuuden
+  // pyöristysvirhe (joka olisi luokkaa 1e-9-1e-12), koska todellisessa
+  // spot-hintadatassa esim. pitkä "0 snt/kWh" -jakso voi sisältää pieniä
+  // todellisia senttitason vaihteluita (0.00, 0.01, -0.00 jne.) eri
+  // varttien välillä ilman, että ne ovat käyttäjän kannalta merkityksellisesti
+  // eri hintaisia. Ilman tätä väljyyttä aiemmin käytetty 1e-9-toleranssi
+  // hylkäsi virheellisesti suurimman osan todellisuudessa yhtä edullisista
+  // ikkunoista, ja näytetty ikkuna kapeni paljon todellista lyhyemmäksi.
+  const EQUAL_TOLERANCE=Math.max(MIN_TOLERANCE,SETTINGS.tolerance||MIN_TOLERANCE);
+  const candidates=[]; // {block, idx} - kaikki indeksit joiden kustannus on lähellä best:iä
+  for(const block of blocks){
+    if(block.length<slotsNeeded)continue;
+    for(let i=0;i<=block.length-slotsNeeded;i++){
+      let c=0;for(let j=0;j<slotsNeeded;j++)c+=block[i+j].price;
+      if(c<best-EQUAL_TOLERANCE){best=c;bestBlock=block;candidates.length=0;candidates.push({block,idx:i});}
+      else if(Math.abs(c-best)<=EQUAL_TOLERANCE){
+        // Jos tämä on aiempaa hieman halvempi (mutta toleranssin sisällä),
+        // päivitetään best tarkimpaan löydettyyn arvoon ilman kandidaattien
+        // nollaamista - näin "best" lähestyy todellista minimiä asteittain
+        // ja kaikki sen toleranssin sisällä olevat pysyvät kandidaatteina.
+        if(c<best)best=c;
+        candidates.push({block,idx:i});
+      }
+    }
+  }
+  // Toinen kierros: koska best saattoi tarkentua ensimmäisen kierroksen
+  // aikana, suodatetaan lopuksi vielä kerran lopullista best-arvoa vasten.
+  const finalCandidates=candidates.filter(c=>{
+    let cost=0;for(let j=0;j<slotsNeeded;j++)cost+=c.block[c.idx+j].price;
+    return Math.abs(cost-best)<=EQUAL_TOLERANCE;
+  });
+
+  // Jos halvin hinta (toleranssin sisällä) toistuu - esim. pitkä lähes-0
+  // snt/kWh -jakso joka on selvästi pidempi kuin tarvittava latausaika -
+  // tarjotaan kaksi vaihtoehtoa: aikaisin ja myöhäisin mahdollinen aloitus.
+  // Käytetään vain bestBlock:n sisäisiä kandidaatteja yksinkertaisuuden vuoksi.
+  const sameBlockCandidates=finalCandidates.filter(c=>c.block===bestBlock);
+  const earliestIdx=Math.min(...sameBlockCandidates.map(c=>c.idx));
+  const latestIdx=Math.max(...sameBlockCandidates.map(c=>c.idx));
+  const showDual=latestIdx>earliestIdx;
+
+  const winEarly=bestBlock.slice(earliestIdx,earliestIdx+slotsNeeded);
+  const winLate=bestBlock.slice(latestIdx,latestIdx+slotsNeeded);
+  const win=winEarly; // pääikkuna (käytetään yksittäisessä näkymässä ja jatkolaskuissa)
+  const selSet=showDual
+    ? new Set([...winEarly,...winLate].map(s=>s.startDate))
+    : new Set(win.map(s=>s.startDate));
+  renderBars(selSet);
+
+  const kwh=need*tf;
+  const winCost=win.reduce((sum,s)=>sum+s.price,0);
+  const avgSpot=winCost/slotsNeeded;
+  const TRANSFER_FEE=SETTINGS.transfer;
+  const DELIVERY_FEE=SETTINGS.delivery;
+  const avgTotal=avgSpot+TRANSFER_FEE+DELIVERY_FEE;
+  const costEur=kwh*(avgTotal/100);
+  const durH=slotsNeeded/4;
+  const durText=formatDuration(slotsNeeded*15);
+  const tempRow=SETTINGS.tempOn
+    ? `<div class="ir"><span class="k">Lämpötilakorjaus</span><span class="v">×${tf.toFixed(2)} (${tempC.toFixed(1)} °C)</span></div>`
+    : `<div class="ir"><span class="k">Lämpötilakorjaus</span><span class="v" style="font-family:-apple-system,sans-serif;font-weight:500">Ei käytössä</span></div>`;
+
+  function renderTimeBlock(win,heading){
+    const startISO=win[0].startDate;
+    const endISO=addMs(win[win.length-1].startDate,15*60000);
+    const startT=slotTime(startISO);
+    const endT=slotTime(endISO);
+    const startD=slotDate(startISO);
+    const endD=slotDate(endISO);
+    const sameDay=startD===endD;
+    const isNow=new Date(startISO)<=now&&now<new Date(addMs(startISO,15*60000));
+    return `
+  <div class="res-hdr">
+    ${heading?`<span style="font-size:14px;font-weight:600">${heading}</span>`:''}
+    ${isNow?'<span class="badge bok">Aloita nyt</span>':''}
+  </div>
+  ${sameDay?`<div class="datehdr">${startD}</div>`:''}
+  <div class="times">
+    <div class="timecol">
+      <span class="big">${startT}</span>
+      ${!sameDay?`<span class="dlbl">${startD}</span>`:''}
+    </div>
+    <span class="arr">→</span>
+    <div class="timecol">
+      <span class="big">${endT}</span>
+      ${!sameDay?`<span class="dlbl">${endD}</span>`:''}
+    </div>
+    <span class="dur">${durText}</span>
+  </div>`;
+  }
+
+  const headerText=showDual
+    ? '⚡ Edullisin hinta – kaksi vaihtoehtoa'
+    : '⚡ Edullisin yhtäjaksoinen ikkuna';
+
+  const timeBlocksHtml=showDual
+    ? renderTimeBlock(winEarly,'Aikaisin aloitus')+
+      `<div style="border-top:1px dashed var(--border2);margin:14px 0"></div>`+
+      renderTimeBlock(winLate,'Myöhäisin aloitus')
+    : renderTimeBlock(win,null);
+
+  const dualNote=showDual
+    ? `<div class="ir"><span class="k" style="font-size:13px">Hinta on samalla tasolla koko jakson ajan – voit aloittaa joko aikaisemmin tai myöhemmin samaan hintaan.</span></div>`
+    : '';
+
+  ra.innerHTML=`
+<div class="res">
+  <div style="font-size:14px;font-weight:600;margin-bottom:4px">${headerText}</div>
+  ${timeBlocksHtml}
+  ${dualNote}
+  <div class="ir"><span class="k">Ladattava energia</span><span class="v">${kwh.toFixed(1)} kWh</span></div>
+  <div class="ir"><span class="k">Kokonaishinta</span><span class="v">${costEur.toFixed(2)} €</span></div>
+  <div class="ir"><span class="k">– Keskim. spot-hinta</span><span class="v">${avgSpot.toFixed(2)} snt/kWh</span></div>
+  <div class="ir"><span class="k">– Siirto + toimitus</span><span class="v">${(TRANSFER_FEE+DELIVERY_FEE).toFixed(2)} snt/kWh</span></div>
+  <div class="ir"><span class="k">– Yhteensä</span><span class="v">${avgTotal.toFixed(2)} snt/kWh</span></div>
+  ${tempRow}
+  <div class="ir"><span class="k">SoC ${s0}% → ${s1}%</span><span class="badge binfo">${need.toFixed(1)} kWh netto</span></div>
+</div>`;
+}
+
+function renderBars(selSet){
+  const wrap=document.getElementById('bars');
+  const lw=document.getElementById('hlbls');
+  const dr=document.getElementById('daterange');
+  wrap.innerHTML='';lw.innerHTML='';
+  if(!slots.length){if(dr)dr.textContent='';return;}
+
+  // Rakenna täysi 48h aikajana 15 min välein nykyhetkestä alkaen,
+  // jotta puuttuvat (julkaisemattomat) vartit näkyvät selvinä aukkoina
+  // eivätkä vain "katoa" kaaviosta.
+  const now=new Date();
+  const start=new Date(now); start.setMinutes(Math.floor(start.getMinutes()/15)*15,0,0);
+  const byTime={};
+  slots.forEach(s=>{byTime[new Date(s.startDate).getTime()]=s;});
+
+  const timeline=[];
+  for(let i=0;i<192;i++){
+    const t=new Date(start.getTime()+i*15*60000);
+    const found=byTime[t.getTime()];
+    timeline.push(found?{...found,missing:false}:{startDate:t.toISOString(),missing:true});
+  }
+  // Leikkaa pois loppupään tyhjä alue jossa ei ole enää mitään tietoa eikä se siis ole "aukko" vaan tuntemattoman tulevaisuuden alkua
+  let lastKnown=-1;
+  timeline.forEach((s,i)=>{if(!s.missing)lastKnown=i;});
+  const tl=timeline.slice(0,Math.max(lastKnown+1,4));
+
+  const knownPrices=tl.filter(s=>!s.missing).map(s=>s.price);
+  const mn=Math.min(...knownPrices),mx=Math.max(...knownPrices),rng=mx-mn||1;
+
+  tl.forEach(s=>{
+    const d=new Date(s.startDate);
+    const isMidnight=d.getHours()===0&&d.getMinutes()===0;
+    const b=document.createElement('div');
+    if(s.missing){
+      b.className='bar gap';
+      b.style.height='14px';
+      b.title=slotDate(s.startDate)+' '+slotTime(s.startDate)+' – hinta ei saatavilla';
+    }else{
+      const h=(s.price-mn)/rng;
+      const past=new Date(s.startDate)<now;
+      const sel=selSet.has(s.startDate);
+      b.className='bar'+(sel?' sel':'')+(past&&!sel?' past':'')+(isMidnight?' daymark':'');
+      b.style.height=Math.round(6+h*50)+'px';
+      if(!sel)b.style.background=`hsl(${Math.round(120*(1-h))},52%,50%)`;
+      b.title=slotDate(s.startDate)+' '+slotTime(s.startDate)+' – '+s.price.toFixed(2)+' snt/kWh';
+    }
+    wrap.appendChild(b);
+    const l=document.createElement('span');
+    l.textContent=(d.getMinutes()===0&&d.getHours()%4===0)?pad(d.getHours()):'';
+    lw.appendChild(l);
+  });
+
+  if(dr){
+    const firstD=slotDate(tl[0].startDate);
+    const lastD=slotDate(tl[tl.length-1].startDate);
+    const gapCount=tl.filter(s=>s.missing).length;
+    dr.innerHTML=(firstD===lastD?firstD:firstD+' – '+lastD)+
+      (gapCount?` · <span style="color:var(--warn-txt)">${(gapCount/4).toFixed(1)} h tietoa puuttuu</span>`:'');
+  }
+}
+
+async function fetchJson(url){
+  const attempts=[];
+
+  // 1) Suora kutsu - toimii jos palvelin joskus lisää CORS-tuen
+  try{
+    const r=await fetch(url,{mode:'cors'});
+    if(r.ok) return await r.json();
+    attempts.push('suora: HTTP '+r.status);
+  }catch(e){ attempts.push('suora: '+e.message); }
+
+  // 2) corsproxy.io
+  try{
+    const r=await fetch('https://corsproxy.io/?url='+encodeURIComponent(url));
+    if(r.ok) return await r.json();
+    attempts.push('corsproxy.io: HTTP '+r.status);
+  }catch(e){ attempts.push('corsproxy.io: '+e.message); }
+
+  // 3) allorigins.win
+  try{
+    const r=await fetch('https://api.allorigins.win/raw?url='+encodeURIComponent(url));
+    if(r.ok) return await r.json();
+    attempts.push('allorigins: HTTP '+r.status);
+  }catch(e){ attempts.push('allorigins: '+e.message); }
+
+  console.error('Kaikki hakutavat epäonnistuivat ('+url+'): '+attempts.join(' | '));
+  throw new Error('Kaikki hakutavat epäonnistuivat');
+}
+
+async function fetchPrices(){
+  document.getElementById('pstat').innerHTML='<span class="spin"></span>Haetaan...';
+  try{
+    const d=await fetchJson('https://api.porssisahko.net/v2/latest-prices.json');
+    if(!d?.prices?.length)throw new Error('no data');
+    const now=new Date();
+    slots=[...d.prices]
+      .sort((a,b)=>new Date(a.startDate)-new Date(b.startDate))
+      .filter(s=>new Date(s.endDate)>now);
+    if(slots.length<4)throw new Error('liian vähän slotteja');
+    pOk=true;
+    document.getElementById('pstat').innerHTML='<span style="color:#006e55;font-weight:600">✓</span> '+slots.length+' varttia ('+(slots.length/4).toFixed(1)+' h)';
+  }catch(e){
+    console.error('prices:',e);
+    slots=[];pOk=true;
+    document.getElementById('pstat').innerHTML='<span style="color:var(--warn-txt)">Hintoja ei saatu haettua</span>';
+  }
+  if(pOk&&tOk)recalc();
+}
+
+async function fetchTemp(){
+  // Jos lämpötilavaikutus on kytketty pois, ei tarvita säätietoa ollenkaan -
+  // tf=1.0 aina, eikä turhaa verkkokutsua tehdä.
+  if(!SETTINGS.tempOn){
+    tempC=null;tOk=true;
+    document.getElementById('tstat').innerHTML='<span class="badge binfo">Ei käytössä</span>';
+    if(pOk&&tOk)recalc();
+    return;
+  }
+  document.getElementById('tstat').innerHTML='<span class="spin"></span>Haetaan...';
+  try{
+    const d=await fetchJson(`https://api.open-meteo.com/v1/forecast?latitude=${SETTINGS.lat}&longitude=${SETTINGS.lon}&current=temperature_2m&timezone=Europe%2FHelsinki`);
+    if(d?.current?.temperature_2m===undefined)throw new Error();
+    tempC=d.current.temperature_2m;tOk=true;
+    const cl=tempC<0?'bwarn':tempC<8?'binfo':'bok';
+    document.getElementById('tstat').innerHTML=`<span class="badge ${cl}">${tempC.toFixed(1)} °C</span>`;
+  }catch(e){
+    console.error('temp:',e);
+    tempC=null;tOk=false;
+    document.getElementById('tstat').innerHTML='<span style="color:var(--warn-txt)">Lämpötilaa ei saatu haettua</span>';
+  }
+  if(pOk&&tOk)recalc();
+}
+
+function refresh(){
+  pOk=false;tOk=false;slots=[];
+  document.getElementById('result').innerHTML='<div class="placeholder">Haetaan...</div>';
+  document.getElementById('bars').innerHTML='';
+  document.getElementById('hlbls').innerHTML='';
+  fetchPrices();fetchTemp();
+}
+
+// Muuntaa slotti-indeksin (15 min -yksiköitä TIMELINE_START:sta) näytettäväksi
+// kellonajaksi. Jos slotti osuu seuraavalle kalenteripäivälle verrattuna
+// TIMELINE_START:n päivään, lisätään perään "(+1)".
+function slotToParts(slot){
+  const t=new Date(TIMELINE_START.getTime()+slot*15*60000);
+  const dayDiff=Math.floor((new Date(t.getFullYear(),t.getMonth(),t.getDate())-
+    new Date(TIMELINE_START.getFullYear(),TIMELINE_START.getMonth(),TIMELINE_START.getDate()))/86400000);
+  // Erikoistapaus: täsmälleen keskiyö esitetään edellisen vuorokauden
+  // loppuna "klo 24", ei seuraavan alkuna "klo 0".
+  if(t.getHours()===0&&t.getMinutes()===0&&slot>0){
+    return{dayLabel:dayDiff-1,clock:'24:00',dayWord:dayWord(dayDiff-1)};
+  }
+  return{dayLabel:dayDiff,clock:pad(t.getHours())+':'+pad(t.getMinutes()),dayWord:dayWord(dayDiff)};
+}
+function dayWord(diff){
+  if(diff<=0)return'Tänään';
+  if(diff===1)return'Huomenna';
+  if(diff===2)return'Ylihuomenna';
+  return diff+'. päivänä';
+}
+
+function updateTimeWindowDisplay(){
+  const tminEl=document.getElementById('tmin');
+  const tmaxEl=document.getElementById('tmax');
+  const vMin=+tminEl.value, vMax=+tmaxEl.value;
+  const pMin=slotToParts(vMin), pMax=slotToParts(vMax);
+
+  const label=(pMin.dayWord===pMax.dayWord)
+    ? `${pMin.dayWord} klo ${pMin.clock} – ${pMax.clock}`
+    : `${pMin.dayWord} klo ${pMin.clock} – ${pMax.dayWord.toLowerCase()} klo ${pMax.clock}`;
+  document.getElementById('time-window-label').textContent=label;
+
+  const durMin=(vMax-vMin)*15;
+  const h=Math.floor(durMin/60), m=durMin%60;
+  const durText=h>0 ? (m>0?`${h}t ${m}min`:`${h}t`) : `${m}min`;
+  document.getElementById('window-duration').textContent=durText;
+
+  // Päivitä täyttöpalkin sijainti ja leveys kahvojen väliin
+  const min=+tminEl.min, max=+tminEl.max+1; // tmax.max on yhtä suurempi kuin tmin.max
+  const totalRange=Math.max(+tmaxEl.max-min,1);
+  const pctMin=((vMin-min)/totalRange)*100;
+  const pctMax=((vMax-min)/totalRange)*100;
+  const fill=document.getElementById('dual-fill');
+  fill.style.left=pctMin+'%';
+  fill.style.width=(pctMax-pctMin)+'%';
+}
+
+['soc0','soc1','tmin','tmax'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',function(){
+    const v=+this.value;
+    if(id==='soc0')document.getElementById('sv0').textContent=v+' %';
+    else if(id==='soc1')document.getElementById('sv1').textContent=v+' %';
+    else if(id==='tmin'){
+      // Aikaisin aloitus ei voi ylittää myöhäisintä lopetusta
+      const tmaxEl=document.getElementById('tmax');
+      if(v>=+tmaxEl.value) tmaxEl.value=Math.min(+tmaxEl.max,v+1);
+      updateTimeWindowDisplay();
+    }
+    else{
+      const tminEl=document.getElementById('tmin');
+      if(v<=+tminEl.value) tminEl.value=Math.max(0,v-1);
+      updateTimeWindowDisplay();
+    }
+    if(pOk&&tOk)recalc();
+  });
+});
+
+// Ankkuroi aikajana nykyhetkeen (pyöristettynä alaspäin lähimpään varttiin)
+// ja anna säätimien kattaa väli [nyt, huomenna klo 24:00]. "Aikaisin aloitus"
+// alkaa oletuksena nykyhetkestä (slotti 0), "myöhäisin lopetus" oletuksena
+// aikajanan lopusta (huomisilta/-yö klo 24:00).
+(function initTimeline(){
+  const now=new Date();
+  now.setMinutes(Math.floor(now.getMinutes()/15)*15,0,0);
+  TIMELINE_START=now;
+
+  // Slottien määrä nykyhetkestä huomiseen klo 24:00 asti.
+  const tomorrowMidnight=new Date(now);
+  tomorrowMidnight.setDate(tomorrowMidnight.getDate()+1);
+  tomorrowMidnight.setHours(24,0,0,0);
+  const totalSlots=Math.round((tomorrowMidnight-now)/(15*60000));
+
+  const tminEl=document.getElementById('tmin');
+  const tmaxEl=document.getElementById('tmax');
+  tminEl.min=0; tminEl.max=totalSlots-1; tminEl.value=0;
+  tmaxEl.min=1; tmaxEl.max=totalSlots; tmaxEl.value=totalSlots;
+
+  updateTimeWindowDisplay();
+})();
+
+// ---- Lisäasetukset: alustus, näyttö, tallennus ----
+
+function applySettingsToUI(){
+  document.getElementById('set-cap').value=SETTINGS.cap;
+  document.getElementById('set-tempon').checked=SETTINGS.tempOn;
+  document.getElementById('set-loc').value=SETTINGS.loc;
+  document.getElementById('set-lat').value=SETTINGS.lat;
+  document.getElementById('set-lon').value=SETTINGS.lon;
+  document.getElementById('set-delivery').value=SETTINGS.delivery;
+  document.getElementById('set-transfer').value=SETTINGS.transfer;
+  document.getElementById('set-tolerance').value=SETTINGS.tolerance;
+  document.getElementById('set-loc-custom').style.display=(SETTINGS.loc==='custom')?'grid':'none';
+
+  const locName=SETTINGS.loc==='custom'
+    ? `${SETTINGS.lat.toFixed(2)}, ${SETTINGS.lon.toFixed(2)}`
+    : (CITY_COORDS[SETTINGS.loc]?.name || 'Tampere');
+  document.getElementById('loc-name-sub').textContent=locName;
+  document.getElementById('loc-name-weather').textContent=locName;
+  document.getElementById('weather-section').style.display=SETTINGS.tempOn?'':'none';
+
+  document.getElementById('chip-cap').textContent=`Akku ${SETTINGS.cap} kWh`;
+  document.getElementById('chip-fees').textContent=`Siirto+toimitus ${(SETTINGS.transfer+SETTINGS.delivery).toFixed(2).replace('.',',')} snt/kWh`;
+
+  CAP=SETTINGS.cap;
+}
+
+document.getElementById('set-loc').addEventListener('change',function(){
+  const v=this.value;
+  document.getElementById('set-loc-custom').style.display=(v==='custom')?'grid':'none';
+  if(v!=='custom' && CITY_COORDS[v]){
+    document.getElementById('set-lat').value=CITY_COORDS[v].lat;
+    document.getElementById('set-lon').value=CITY_COORDS[v].lon;
+  }
+});
+
+document.getElementById('set-save').addEventListener('click',function(){
+  const loc=document.getElementById('set-loc').value;
+  const coords=loc==='custom'
+    ? {lat:parseFloat(document.getElementById('set-lat').value)||DEFAULT_SETTINGS.lat,
+       lon:parseFloat(document.getElementById('set-lon').value)||DEFAULT_SETTINGS.lon}
+    : {lat:CITY_COORDS[loc].lat, lon:CITY_COORDS[loc].lon};
+
+  const newSettings={
+    cap:parseFloat(document.getElementById('set-cap').value)||DEFAULT_SETTINGS.cap,
+    tempOn:document.getElementById('set-tempon').checked,
+    loc:loc,
+    lat:coords.lat,
+    lon:coords.lon,
+    delivery:parseFloat(document.getElementById('set-delivery').value)||0,
+    transfer:parseFloat(document.getElementById('set-transfer').value)||0,
+    tolerance:Math.max(MIN_TOLERANCE,parseFloat(document.getElementById('set-tolerance').value)||MIN_TOLERANCE),
+  };
+
+  const tempEffectChanged=newSettings.tempOn!==SETTINGS.tempOn;
+  const locChanged=newSettings.lat!==SETTINGS.lat||newSettings.lon!==SETTINGS.lon;
+
+  SETTINGS=newSettings;
+  saveSettingsToStorage(SETTINGS);
+  applySettingsToUI();
+
+  const msg=document.getElementById('set-saved-msg');
+  msg.style.display='block';
+  msg.style.opacity='1';
+  setTimeout(()=>{msg.style.opacity='0';setTimeout(()=>msg.style.display='none',300);},1500);
+
+  // Jos lämpötilavaikutus tai sijainti muuttui, säätieto on haettava uudelleen.
+  if(tempEffectChanged||locChanged){
+    tOk=false;
+    fetchTemp();
+  } else if(pOk&&tOk){
+    recalc();
+  }
+});
+
+document.getElementById('set-reset').addEventListener('click',function(){
+  SETTINGS={...DEFAULT_SETTINGS};
+  saveSettingsToStorage(SETTINGS);
+  applySettingsToUI();
+  tOk=false;
+  fetchTemp();
+});
+
+applySettingsToUI();
+
+fetchPrices();fetchTemp();
+</script>
+</body>
+</html>
